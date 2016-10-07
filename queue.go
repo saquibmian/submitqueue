@@ -3,6 +3,8 @@ package submitqueue
 import (
 	"errors"
 	"sort"
+	"github.com/saquibmian/submitqueue/scm"
+	"github.com/saquibmian/submitqueue/project"
 )
 
 // Priority The priority of the submit request.
@@ -32,9 +34,9 @@ type SubmitRequest interface {
 	Sha1() string
 	Priority() Priority
 	IsEmergency() bool
-	GetProject() Project
-	GetRepo() Repo
-	GetPR() PullRequest
+	GetProject() project.Project
+	GetRepo() scm.Repo
+	GetPR() scm.PullRequest
 }
 
 // SubmitQueue The submit queue.

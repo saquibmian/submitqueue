@@ -4,30 +4,6 @@ import (
 	"time"
 )
 
-type TestResult struct {
-	Passed bool
-	Error  string
-}
-
-type RunningTest struct {
-	Result <-chan (TestResult)
-}
-
-type Project interface {
-	Test(PullRequest) (RunningTest, error)
-}
-
-type Repo interface {
-	IsGithub() bool
-	HeadSha1() (string, error)
-}
-
-type PullRequest interface {
-	HeadSha1() (string, error)
-	IsMergeCandidate() (bool, string, error)
-	Merge() error
-}
-
 type Reporter struct{}
 
 func (r *Reporter) Report(req SubmitRequest, msg string, args ...interface{}) {

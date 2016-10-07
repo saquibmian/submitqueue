@@ -1,6 +1,10 @@
 package submitqueue
 
-import "testing"
+import (
+	"testing"
+	"github.com/saquibmian/submitqueue/scm"
+	"github.com/saquibmian/submitqueue/project"
+)
 
 type testSubmitRequest struct {
 	priority    Priority
@@ -16,13 +20,13 @@ func (r testSubmitRequest) IsEmergency() bool {
 func (r testSubmitRequest) Sha1() string {
 	return "test"
 }
-func (r testSubmitRequest) GetProject() Project {
+func (r testSubmitRequest) GetProject() project.Project {
 	return nil
 }
-func (r testSubmitRequest) GetRepo() Repo {
+func (r testSubmitRequest) GetRepo() scm.Repo {
 	return nil
 }
-func (r testSubmitRequest) GetPR() PullRequest {
+func (r testSubmitRequest) GetPR() scm.PullRequest {
 	return nil
 }
 
