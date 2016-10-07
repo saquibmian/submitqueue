@@ -19,6 +19,12 @@ var (
 	P2 Priority = 998
 	// P1 Priority 1
 	P1 Priority = 999
+
+	// ErrQueueEmpty The error returned when the queue is empty
+	ErrQueueEmpty = errors.New("queue empty")
+
+	// ErrQueueUnsorted The error returned when the queue is unsorted
+	ErrQueueUnsorted = errors.New("queue unsorted")
 )
 
 // SubmitRequest The data for each submit request
@@ -63,10 +69,10 @@ func (q *SubmitQueue) Sort() {
 // Dequeue Dequeues an item from a sorted queue. Queue must be resorted.
 func (q *SubmitQueue) Dequeue() (SubmitRequest, error) {
 	if len(q.items) == 0 {
-		return nil, errors.New("queue empty")
+		return nil, ErrQueueEmpty
 	}
 	if !q.sorted {
-		return nil, errors.New("queue must be sorted")
+		return nil, ErrQueueUnsorted
 	}
 	item := q.items[0]
 	q.items = q.items[1:]
@@ -76,10 +82,10 @@ func (q *SubmitQueue) Dequeue() (SubmitRequest, error) {
 // Peek Peeks an item from a sorted queue. Queue must be resorted.
 func (q *SubmitQueue) Peek() (SubmitRequest, error) {
 	if len(q.items) < 1 {
-		return nil, errors.New("queue empty")
+		return nil, ErrQueueEmpty
 	}
 	if !q.sorted {
-		return nil, errors.New("queue must be sorted")
+		return nil, ErrQueueUnsorted
 	}
 	item := q.items[0]
 	return item, nil

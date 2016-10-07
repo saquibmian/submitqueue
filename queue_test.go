@@ -13,6 +13,11 @@ func (r testSubmitRequest) Priority() Priority {
 func (r testSubmitRequest) IsEmergency() bool {
 	return r.isEmergency
 }
+	return nil
+}
+func (r testSubmitRequest) GetPR() PullRequest {
+	return nil
+}
 
 func testRequest(priority Priority, isEmergency bool) SubmitRequest {
 	return testSubmitRequest{
@@ -80,7 +85,7 @@ func TestDequeue_ShouldFailOnUnsortedQueue(t *testing.T) {
 		t.Fatalf("intial queue should not be sorted")
 	}
 
-	if _, err := queue.Dequeue(); err == nil {
+	if _, err := queue.Dequeue(); err != ErrQueueUnsorted {
 		t.Fatalf("should error on dequeue from unsorted queue")
 	}
 }
@@ -88,7 +93,7 @@ func TestDequeue_ShouldFailOnUnsortedQueue(t *testing.T) {
 func TestDequeue_ShouldFailOnEmptyQueue(t *testing.T) {
 	queue := newQueue()
 
-	if _, err := queue.Dequeue(); err == nil {
+	if _, err := queue.Dequeue(); err != ErrQueueEmpty {
 		t.Fatalf("should error on dequeue from empty queue")
 	}
 }
