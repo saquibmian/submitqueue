@@ -22,28 +22,20 @@ var (
 )
 
 // SubmitRequest The data for each submit request
-type SubmitRequest struct {
-	priority    Priority
-	isEmergency bool
-}
-
-// NewRequest Creates a new SubmitRequest
-func NewRequest(priority Priority, isEmergency bool) *SubmitRequest {
-	return &SubmitRequest{
-		priority:    priority,
-		isEmergency: isEmergency,
-	}
+type SubmitRequest interface {
+	Priority() Priority
+	IsEmergency() bool
 }
 
 // SubmitQueue The submit queue.
 type SubmitQueue struct {
 	sorted bool
-	items  []*SubmitRequest
+	items  []SubmitRequest
 }
 
 // NewQueue Creates a new queue with the items present.
 // The resulting queue has not yet been sorted.
-func NewQueue(items []*SubmitRequest) *SubmitQueue {
+func NewQueue(items []SubmitRequest) *SubmitQueue {
 	return &SubmitQueue{
 		sorted: false,
 		items:  items,
@@ -56,7 +48,7 @@ func (q *SubmitQueue) IsSorted() bool {
 }
 
 // Enqueue Adds an item to the queue. The queue must be sorted again.
-func (q *SubmitQueue) Enqueue(item *SubmitRequest) {
+func (q *SubmitQueue) Enqueue(item SubmitRequest) {
 	q.items = append(q.items, item)
 	q.sorted = false
 }
@@ -69,7 +61,7 @@ func (q *SubmitQueue) Sort() {
 }
 
 // Dequeue Dequeues an item from a sorted queue. Queue must be resorted.
-func (q *SubmitQueue) Dequeue() (*SubmitRequest, error) {
+func (q *SubmitQueue) Dequeue() (SubmitRequest, error) {
 	if len(q.items) == 0 {
 		return nil, errors.New("queue empty")
 	}
@@ -82,7 +74,7 @@ func (q *SubmitQueue) Dequeue() (*SubmitRequest, error) {
 }
 
 // Peek Peeks an item from a sorted queue. Queue must be resorted.
-func (q *SubmitQueue) Peek() (*SubmitRequest, error) {
+func (q *SubmitQueue) Peek() (SubmitRequest, error) {
 	if len(q.items) < 1 {
 		return nil, errors.New("queue empty")
 	}
@@ -93,7 +85,7 @@ func (q *SubmitQueue) Peek() (*SubmitRequest, error) {
 	return item, nil
 }
 
-type byPriorityDescending []*SubmitRequest
+type byPriorityDescending []SubmitRequest
 
 func (p byPriorityDescending) Len() int {
 	return len(p)
@@ -102,10 +94,10 @@ func (p byPriorityDescending) Swap(i, j int) {
 	p[i], p[j] = p[j], p[i]
 }
 func (p byPriorityDescending) Less(i, j int) bool {
-	return p[i].priority > p[j].priority
+	return p[i].Priority() > p[j].Priority()
 }
 
-type byEmergencyFirst []*SubmitRequest
+type byEmergencyFirst []SubmitRequest
 
 func (p byEmergencyFirst) Len() int {
 	return len(p)
@@ -114,5 +106,5 @@ func (p byEmergencyFirst) Swap(i, j int) {
 	p[i], p[j] = p[j], p[i]
 }
 func (p byEmergencyFirst) Less(i, j int) bool {
-	return p[i].isEmergency && !p[j].isEmergency
+	return p[i].IsEmergency() && !p[j].IsEmergency()
 }
