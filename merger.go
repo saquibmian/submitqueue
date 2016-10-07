@@ -9,25 +9,23 @@ type TestResult struct {
 	Error  string
 }
 
-type RunningTest interface {
-	RepoSha1() string
-	PRSha1() string
-	Result() <-chan (TestResult)
+type RunningTest struct {
+	Result <-chan (TestResult)
 }
 
 type Project interface {
-	Test(PullRequest) RunningTest
+	Test(PullRequest) (RunningTest, error)
 }
 
 type Repo interface {
 	IsGithub() bool
-	HeadSha1() string
+	HeadSha1() (string, error)
 }
 
 type PullRequest interface {
-	HeadSha1() string
-	IsMergeCandidate() (bool, string)
-	Merge()
+	HeadSha1() (string, error)
+	IsMergeCandidate() (bool, string, error)
+	Merge() error
 }
 
 type Reporter struct{}
@@ -55,29 +53,67 @@ func processQueue(queue *SubmitQueue, reporter *Reporter) {
 }
 
 func processRequest(req SubmitRequest, reporter *Reporter, queue *SubmitQueue) {
-	if req.GetRepo().IsGithub() && req.GetPR().HeadSha1() != req.Sha1() {
-		reporter.Report(req, "PR updated; re-queuing")
+	repo := req.GetRepo()
+	pr := req.GetPR()
+
+	// make sure PR is mergeable
+	repoHeadSha1, err := repo.HeadSha1()
+	if err != nil {
+		queue.Enqueue(req)
+		reporter.Report(req, "unable to fetch repo's SHA1; requeued")
 		return
 	}
-
-	if ok, reason := req.GetPR().IsMergeCandidate(); !ok {
+	prHeadSha1, err := pr.HeadSha1()
+	if err != nil {
+		queue.Enqueue(req)
+		reporter.Report(req, "unable to fetch PR's SHA1; requeued")
+		return
+	}
+	if repo.IsGithub() && prHeadSha1 != req.Sha1() {
+		reporter.Report(req, "PR updated; re-queue when ready")
+		return
+	}
+	if ok, reason, err := pr.IsMergeCandidate(); err != nil {
+		queue.Enqueue(req)
+		reporter.Report(req, "unable to determine if PR is mergable; requeued")
+		return
+	} else if !ok {
 		reporter.Report(req, "unable to automatically merge pr: %v", reason)
 		return
 	}
 
-	test := req.GetProject().Test(req.GetPR())
-	result := <-test.Result()
+	// run tests
+	test, err := req.GetProject().Test(pr)
+	if err != nil {
+		queue.Enqueue(req)
+		reporter.Report(req, "error requesting tests; requeued: %v", err)
+		return
+	}
+	result := <-test.Result // todo timeout here
 	if !result.Passed {
-		reporter.Report(req, "failed to automatically merge; error running tests: %s", result.Error)
+		reporter.Report(req, "failed to automatically merge; tests failed: %s", result.Error)
 		return
 	}
 
-	if req.GetRepo().HeadSha1() != test.RepoSha1() || req.GetPR().HeadSha1() != test.PRSha1() {
+	// make sure head hasn't changed
+	currentRepoHeadSha1, err := repo.HeadSha1()
+	if err != nil {
+		queue.Enqueue(req)
+		reporter.Report(req, "unable to fetch repo's SHA1; requeued")
+		return
+	}
+	currentPrHeadSha1, err := pr.HeadSha1()
+	if err != nil {
+		queue.Enqueue(req)
+		reporter.Report(req, "unable to fetch PR's SHA1; requeued")
+		return
+	}
+	if currentRepoHeadSha1 != repoHeadSha1 || currentPrHeadSha1 != prHeadSha1 {
 		reporter.Report(req, "PR changed while being tested and has been re-scheduled")
 		queue.Enqueue(req)
 		return
 	}
 
-	req.GetPR().Merge()
+	pr.Merge()
 	reporter.Report(req, "pr automatically merged!")
 }
