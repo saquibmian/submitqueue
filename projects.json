@@ -1,0 +1,20 @@
+[
+    {
+        "name": "submitqueue-v1",
+        "testConfig": {
+            "url": "",
+            "method": "",
+            "headers": {},
+            "body": ""
+        }
+    },
+    {
+        "name": "submitqueue-v2",
+        "testConfig": {
+            "url": "",
+            "method": "",
+            "headers": {},
+            "body": ""
+        }
+    }
+]
