@@ -2,13 +2,32 @@ package submitqueue
 
 import "testing"
 
+type testSubmitRequest struct {
+	priority    Priority
+	isEmergency bool
+}
+
+func (r testSubmitRequest) Priority() Priority {
+	return r.priority
+}
+func (r testSubmitRequest) IsEmergency() bool {
+	return r.isEmergency
+}
+
+func testRequest(priority Priority, isEmergency bool) SubmitRequest {
+	return testSubmitRequest{
+		priority:    priority,
+		isEmergency: isEmergency,
+	}
+}
+
 func newQueue() *SubmitQueue {
-	items := []*SubmitRequest{}
+	items := []SubmitRequest{}
 	queue := NewQueue(items)
 	return queue
 }
 
-func mustDequeue(q *SubmitQueue, t *testing.T) *SubmitRequest {
+func mustDequeue(q *SubmitQueue, t *testing.T) SubmitRequest {
 	item, err := q.Dequeue()
 	if err != nil {
 		t.Fatalf(err.Error())
@@ -23,7 +42,7 @@ func TestEnqueue_ShouldMarkUnsorted(t *testing.T) {
 		t.Fatalf("intial queue should not be sorted")
 	}
 
-	queue.Enqueue(NewRequest(PNormal, false))
+	queue.Enqueue(testRequest(PNormal, false))
 
 	if queue.sorted {
 		t.Errorf("queue should not be sorted, but was")
@@ -32,7 +51,7 @@ func TestEnqueue_ShouldMarkUnsorted(t *testing.T) {
 
 func TestEnqueue_ShouldAddItem(t *testing.T) {
 	queue := newQueue()
-	queue.Enqueue(NewRequest(PNormal, false))
+	queue.Enqueue(testRequest(PNormal, false))
 	queue.Sort()
 
 	if _, err := queue.Dequeue(); err != nil {
@@ -42,7 +61,7 @@ func TestEnqueue_ShouldAddItem(t *testing.T) {
 
 func TestDequeue_ShouldStillBeMarkedSorted(t *testing.T) {
 	queue := newQueue()
-	queue.Enqueue(NewRequest(PNormal, false))
+	queue.Enqueue(testRequest(PNormal, false))
 	queue.Sort()
 	if !queue.sorted {
 		t.Fatalf("queue was not sorted")
@@ -56,7 +75,7 @@ func TestDequeue_ShouldStillBeMarkedSorted(t *testing.T) {
 
 func TestDequeue_ShouldFailOnUnsortedQueue(t *testing.T) {
 	queue := newQueue()
-	queue.Enqueue(NewRequest(PNormal, false))
+	queue.Enqueue(testRequest(PNormal, false))
 	if queue.sorted {
 		t.Fatalf("intial queue should not be sorted")
 	}
@@ -76,8 +95,8 @@ func TestDequeue_ShouldFailOnEmptyQueue(t *testing.T) {
 
 func TestDequeue_ShouldRemoveItem(t *testing.T) {
 	queue := newQueue()
-	queue.Enqueue(NewRequest(PNormal, false))
-	queue.Enqueue(NewRequest(PNormal, false))
+	queue.Enqueue(testRequest(PNormal, false))
+	queue.Enqueue(testRequest(P2, false))
 	queue.Sort()
 
 	item1 := mustDequeue(queue, t)
@@ -103,8 +122,8 @@ func TestSort_ShouldMarkQueueSorted(t *testing.T) {
 
 func TestSort_ShouldSortByPriority(t *testing.T) {
 	queue := newQueue()
-	queue.Enqueue(NewRequest(P2, false))
-	queue.Enqueue(NewRequest(P1, false))
+	queue.Enqueue(testRequest(P2, false))
+	queue.Enqueue(testRequest(P1, false))
 	queue.Sort()
 
 	currentPriority := P1
@@ -113,18 +132,18 @@ func TestSort_ShouldSortByPriority(t *testing.T) {
 		if err != nil {
 			break
 		}
-		if item.priority > currentPriority {
+		if item.Priority() > currentPriority {
 			t.Fatalf("incorrect priority ordering")
 		}
-		currentPriority = item.priority
+		currentPriority = item.Priority()
 	}
 }
 
 func TestSort_ShouldSortEmergencyFirst(t *testing.T) {
 	queue := newQueue()
-	emergencyRequest := NewRequest(P2, true)
-	p1Request := NewRequest(P1, false)
-	p2Request := NewRequest(P2, false)
+	emergencyRequest := testRequest(P2, true)
+	p1Request := testRequest(P1, false)
+	p2Request := testRequest(P2, false)
 	queue.Enqueue(p1Request)
 	queue.Enqueue(emergencyRequest)
 	queue.Enqueue(p2Request)
@@ -132,15 +151,15 @@ func TestSort_ShouldSortEmergencyFirst(t *testing.T) {
 
 	item := mustDequeue(queue, t)
 	if item != emergencyRequest {
-		t.Fatalf("expected emergency request, got %v", item.priority)
+		t.Fatalf("expected emergency request, got %v", item.Priority())
 	}
 }
 
 func TestSort_ShouldSortEmergencyThenByPriority(t *testing.T) {
 	queue := newQueue()
-	emergencyRequest := NewRequest(P2, true)
-	p1Request := NewRequest(P1, false)
-	p2Request := NewRequest(P2, false)
+	emergencyRequest := testRequest(P2, true)
+	p1Request := testRequest(P1, false)
+	p2Request := testRequest(P2, false)
 	queue.Enqueue(p1Request)
 	queue.Enqueue(emergencyRequest)
 	queue.Enqueue(p2Request)
@@ -148,7 +167,7 @@ func TestSort_ShouldSortEmergencyThenByPriority(t *testing.T) {
 
 	item := mustDequeue(queue, t)
 	if item != emergencyRequest {
-		t.Fatalf("expected emergency request, got %v", item.priority)
+		t.Fatalf("expected emergency request, got %v", item.Priority())
 	}
 	currentPriority := P1
 	for {
@@ -156,9 +175,9 @@ func TestSort_ShouldSortEmergencyThenByPriority(t *testing.T) {
 		if err != nil {
 			break
 		}
-		if item.priority > currentPriority {
+		if item.Priority() > currentPriority {
 			t.Fatalf("incorrect priority ordering")
 		}
-		currentPriority = item.priority
+		currentPriority = item.Priority()
 	}
 }
