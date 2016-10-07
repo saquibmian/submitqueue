@@ -13,6 +13,13 @@ func (r testSubmitRequest) Priority() Priority {
 func (r testSubmitRequest) IsEmergency() bool {
 	return r.isEmergency
 }
+func (r testSubmitRequest) Sha1() string {
+	return "test"
+}
+func (r testSubmitRequest) GetProject() Project {
+	return nil
+}
+func (r testSubmitRequest) GetRepo() Repo {
 	return nil
 }
 func (r testSubmitRequest) GetPR() PullRequest {

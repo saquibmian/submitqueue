@@ -29,8 +29,12 @@ var (
 
 // SubmitRequest The data for each submit request
 type SubmitRequest interface {
+	Sha1() string
 	Priority() Priority
 	IsEmergency() bool
+	GetProject() Project
+	GetRepo() Repo
+	GetPR() PullRequest
 }
 
 // SubmitQueue The submit queue.
