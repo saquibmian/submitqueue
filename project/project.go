@@ -12,8 +12,9 @@ import (
 )
 
 var (
-	projectFile = "projects.json"
-	projects    map[string]Project
+	projectFile        = "projects.json"
+	projects           map[string]Project
+	ErrProjectNotFound = errors.New("project not found")
 )
 
 // LoadProjects loads all projects defined in project.json
@@ -39,11 +40,16 @@ func LoadProjects() error {
 
 // Get gets a loaded project by name
 func Get(name string) (Project, error) {
-	return nil, nil
+	proj, ok := projects[name]
+	if !ok {
+		return nil, ErrProjectNotFound
+	}
+	return proj, nil
 }
 
 // Projects returns all loaded projects
 func Projects() map[string]Project {
+	// todo don't expose map here
 	return projects
 }
 
@@ -82,10 +88,6 @@ type testRequestConfig struct {
 	BodyTemplate string            `json:"body"`
 }
 
-func (c testRequestConfig) GetBodyTemplate() (*template.Template, error) {
-	return template.New(c.Method + c.URL).Parse(c.BodyTemplate)
-}
-
 type projectConfig struct {
 	Name       string            `json:"name"`
 	ScmConfig  scmConfig         `json:"scm"`
@@ -121,7 +123,7 @@ func (p *project) GetPR(repo string, number int) (scm.PullRequest, error) {
 
 func (p *project) Test(testRequest SubmitRequest) (RunningTest, error) {
 	tc := p.config.TestConfig
-	tmpl, err := tc.GetBodyTemplate()
+	tmpl, err := template.New(tc.Method + tc.URL).Parse(tc.BodyTemplate)
 	if err != nil {
 		return RunningTest{}, err
 	}
