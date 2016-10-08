@@ -64,20 +64,21 @@ func (t *RunningTest) Wait() (bool, error) {
 type Project interface {
 	Name() string
 	Queue() *SubmitQueue
-	GetRepo(name string) scm.Repo
-	GetPR(repo string, number int) scm.PullRequest
-	Test(scm.PullRequest) (RunningTest, error)
+	GetRepo(name string) (scm.Repo, error)
+	GetPR(repo string, number int) (scm.PullRequest, error)
+	Test(SubmitRequest) (RunningTest, error)
 }
 
 type scmConfig struct {
-	Type   string `json:"type"`
-	Server string `json:"server"`
+	Type        string `json:"type"`
+	ProjectName string `json:"projectName"`
+	Server      string `json:"server,omitempty"`
 }
 
 type testRequestConfig struct {
 	URL          string            `json:"url"`
-	Method       string            `json:"method"`
-	Headers      map[string]string `json:"headers"`
+	Method       string            `json:"method,omitempty"`
+	Headers      map[string]string `json:"headers,omitempty"`
 	BodyTemplate string            `json:"body"`
 }
 
@@ -104,25 +105,35 @@ func (p *project) Queue() *SubmitQueue {
 	return p.queue
 }
 
-func (p *project) GetRepo(name string) scm.Repo {
-	return nil
+func (p *project) GetRepo(repo string) (scm.Repo, error) {
+	if p.config.ScmConfig.Type == "github" {
+		return scm.NewGithubRepo(p.config.ScmConfig.ProjectName, repo), nil
+	}
+	return nil, nil
 }
 
-func (p *project) GetPR(repo string, number int) scm.PullRequest {
-	return nil
+func (p *project) GetPR(repo string, number int) (scm.PullRequest, error) {
+	if p.config.ScmConfig.Type == "github" {
+		return scm.NewGithubPullRequest(p.config.ScmConfig.ProjectName, repo, number), nil
+	}
+	return nil, nil
 }
 
-func (p *project) Test(pr scm.PullRequest) (RunningTest, error) {
+func (p *project) Test(testRequest SubmitRequest) (RunningTest, error) {
 	tc := p.config.TestConfig
 	tmpl, err := tc.GetBodyTemplate()
 	if err != nil {
 		return RunningTest{}, err
 	}
 	body := new(bytes.Buffer)
-	if err = tmpl.Execute(body, nil); err != nil {
+	if err = tmpl.Execute(body, testRequest); err != nil {
 		return RunningTest{}, err
 	}
-	req, err := http.NewRequest(tc.Method, tc.URL, nil)
+	method := tc.Method
+	if method == "" {
+		method = "POST"
+	}
+	req, err := http.NewRequest(method, tc.URL, body)
 	if err != nil {
 		return RunningTest{}, err
 	}

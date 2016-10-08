@@ -2,25 +2,23 @@
     {
         "name": "submitqueue-v1",
         "scm": {
-            "type": "github"
+            "type": "github",
+            "projectName": "saquibmian"
         },
         "testConfig": {
-            "url": "",
-            "method": "",
-            "headers": {},
-            "body": ""
+            "url": "http://localhost:8000/testGuy",
+            "body": "PR number: {{.PRNumber}}"
         }
     },
     {
         "name": "submitqueue-v2",
         "scm": {
             "type": "bitbucket-server",
+            "projectName": "saquibmian",
             "server": "git.dev.internal:1234"
         },
         "testConfig": {
             "url": "",
-            "method": "",
-            "headers": {},
             "body": ""
         }
     }

@@ -100,7 +100,7 @@ func (q *SubmitQueue) Peek() (SubmitRequest, error) {
 // Dump dumps the sorted contents of the queue to the io.Writer
 func (q *SubmitQueue) Dump() {
 	for i, item := range q.items {
-		fmt.Printf("[%2d] %s %s\n", i, item.Repo, item.Sha1)
+		fmt.Printf("[%2d] %s:%d %s\n", i, item.Repo, item.PRNumber, item.Sha1)
 	}
 }
 
