@@ -12,11 +12,14 @@ import (
 )
 
 var (
-	projects = make(map[string]Project)
+	projectFile = "projects.json"
+	projects    map[string]Project
 )
 
+// LoadProjects loads all projects defined in project.json
 func LoadProjects() error {
-	file, err := os.Open("projects.json")
+	projects = make(map[string]Project)
+	file, err := os.Open(projectFile)
 	if err != nil {
 		return err
 	}
@@ -34,21 +37,28 @@ func LoadProjects() error {
 	return nil
 }
 
+// Get gets a loaded project by name
 func Get(name string) (Project, error) {
 	return nil, nil
 }
 
+// Projects returns all loaded projects
 func Projects() map[string]Project {
 	return projects
 }
 
-type TestResult struct {
+type testResult struct {
 	Passed bool
-	Error  string
+	Error  error
 }
 
 type RunningTest struct {
-	Result <-chan TestResult
+	result <-chan testResult
+}
+
+func (t *RunningTest) Wait() (bool, error) {
+	result := <-t.result
+	return result.Passed, result.Error
 }
 
 type Project interface {
@@ -57,6 +67,11 @@ type Project interface {
 	GetRepo(name string) scm.Repo
 	GetPR(repo string, number int) scm.PullRequest
 	Test(scm.PullRequest) (RunningTest, error)
+}
+
+type scmConfig struct {
+	Type   string `json:"type"`
+	Server string `json:"server"`
 }
 
 type testRequestConfig struct {
@@ -72,13 +87,13 @@ func (c testRequestConfig) GetBodyTemplate() (*template.Template, error) {
 
 type projectConfig struct {
 	Name       string            `json:"name"`
-	Type       string            `json:"type"`
+	ScmConfig  scmConfig         `json:"scm"`
 	TestConfig testRequestConfig `json:"testConfig"`
 }
 
 type project struct {
 	config projectConfig
-	queue *SubmitQueue
+	queue  *SubmitQueue
 }
 
 func (p *project) Name() string {
@@ -96,7 +111,6 @@ func (p *project) GetRepo(name string) scm.Repo {
 func (p *project) GetPR(repo string, number int) scm.PullRequest {
 	return nil
 }
-
 
 func (p *project) Test(pr scm.PullRequest) (RunningTest, error) {
 	tc := p.config.TestConfig
@@ -125,8 +139,8 @@ func (p *project) Test(pr scm.PullRequest) (RunningTest, error) {
 	// todo check response status code
 
 	// todo do result properly
-	resultChannel := make(chan TestResult, 1)
-	resultChannel <- TestResult{true, ""}
+	resultChannel := make(chan testResult, 1)
+	resultChannel <- testResult{true, nil}
 
 	return RunningTest{resultChannel}, err
 }

@@ -1,7 +1,9 @@
 [
     {
         "name": "submitqueue-v1",
-        "type": "github",
+        "scm": {
+            "type": "github"
+        },
         "testConfig": {
             "url": "",
             "method": "",
@@ -11,7 +13,10 @@
     },
     {
         "name": "submitqueue-v2",
-        "type": "bitbucket-server",
+        "scm": {
+            "type": "bitbucket-server",
+            "server": "git.dev.internal:1234"
+        },
         "testConfig": {
             "url": "",
             "method": "",

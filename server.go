@@ -83,9 +83,9 @@ func processRequest(req project.SubmitRequest, reporter *Reporter, proj project.
 		reporter.Report(req, "error requesting tests; requeued: %v", err)
 		return
 	}
-	result := <-test.Result // todo timeout here
-	if !result.Passed {
-		reporter.Report(req, "failed to automatically merge; tests failed: %s", result.Error)
+	passed, err := test.Wait()
+	if !passed {
+		reporter.Report(req, "failed to automatically merge; tests failed: %s", err.Error())
 		return
 	}
 
