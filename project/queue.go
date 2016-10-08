@@ -29,14 +29,14 @@ var (
 )
 
 // SubmitRequest The data for each submit request
-type SubmitRequest interface {
-	Priority() Priority
-	IsEmergency() bool
-	Project() string
-	Repo() string
-	PRNumber() int
-	Ref() string
-	Sha1() string
+type SubmitRequest struct {
+	Priority Priority
+	IsEmergency bool
+	Project string
+	Repo string
+	PRNumber int
+	FromRef string
+	Sha1 string
 }
 
 // SubmitQueue The submit queue.
@@ -75,10 +75,10 @@ func (q *SubmitQueue) Sort() {
 // Dequeue Dequeues an item from a sorted queue. Queue must be resorted.
 func (q *SubmitQueue) Dequeue() (SubmitRequest, error) {
 	if len(q.items) == 0 {
-		return nil, ErrQueueEmpty
+		return SubmitRequest{}, ErrQueueEmpty
 	}
 	if !q.sorted {
-		return nil, ErrQueueUnsorted
+		return SubmitRequest{}, ErrQueueUnsorted
 	}
 	item := q.items[0]
 	q.items = q.items[1:]
@@ -88,10 +88,10 @@ func (q *SubmitQueue) Dequeue() (SubmitRequest, error) {
 // Peek Peeks an item from a sorted queue. Queue must be resorted.
 func (q *SubmitQueue) Peek() (SubmitRequest, error) {
 	if len(q.items) < 1 {
-		return nil, ErrQueueEmpty
+		return SubmitRequest{}, ErrQueueEmpty
 	}
 	if !q.sorted {
-		return nil, ErrQueueUnsorted
+		return SubmitRequest{}, ErrQueueUnsorted
 	}
 	item := q.items[0]
 	return item, nil
@@ -100,7 +100,7 @@ func (q *SubmitQueue) Peek() (SubmitRequest, error) {
 // Dump dumps the sorted contents of the queue to the io.Writer
 func (q *SubmitQueue) Dump() {
 	for i, item := range q.items {
-		fmt.Printf("[%2d] %s %s\n", i, "repo-name", item.Sha1())
+		fmt.Printf("[%2d] %s %s\n", i, "repo-name", item.Sha1)
 	}
 }
 
@@ -113,7 +113,7 @@ func (p byPriorityDescending) Swap(i, j int) {
 	p[i], p[j] = p[j], p[i]
 }
 func (p byPriorityDescending) Less(i, j int) bool {
-	return p[i].Priority() > p[j].Priority()
+	return p[i].Priority > p[j].Priority
 }
 
 type byEmergencyFirst []SubmitRequest
@@ -125,5 +125,5 @@ func (p byEmergencyFirst) Swap(i, j int) {
 	p[i], p[j] = p[j], p[i]
 }
 func (p byEmergencyFirst) Less(i, j int) bool {
-	return p[i].IsEmergency() && !p[j].IsEmergency()
+	return p[i].IsEmergency && !p[j].IsEmergency
 }

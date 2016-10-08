@@ -46,8 +46,8 @@ func processQueue(proj project.Project, reporter *Reporter) {
 }
 
 func processRequest(req project.SubmitRequest, reporter *Reporter, proj project.Project) {
-	repo := req.GetRepo()
-	pr := req.GetPR()
+	repo := proj.GetRepo(req.Repo)
+	pr := proj.GetPR(req.Repo, req.PRNumber)
 
 	// make sure PR is mergeable
 	repoHeadSha1, err := repo.HeadSha1()
@@ -63,7 +63,7 @@ func processRequest(req project.SubmitRequest, reporter *Reporter, proj project.
 		return
 	}
 	// todo kill this
-	if repo.IsGithub() && prHeadSha1 != req.Sha1() {
+	if repo.IsGithub() && prHeadSha1 != req.Sha1 {
 		reporter.Report(req, "PR updated; re-queue when ready")
 		return
 	}

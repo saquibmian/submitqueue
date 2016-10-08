@@ -2,34 +2,12 @@ package project
 
 import (
 	"testing"
-	"github.com/saquibmian/submitqueue/scm"
 )
 
-type testSubmitRequest struct {
-	priority    Priority
-	isEmergency bool
-}
-
-func (r testSubmitRequest) Priority() Priority {
-	return r.priority
-}
-func (r testSubmitRequest) IsEmergency() bool {
-	return r.isEmergency
-}
-func (r testSubmitRequest) Sha1() string {
-	return "test"
-}
-func (r testSubmitRequest) GetRepo() scm.Repo {
-	return nil
-}
-func (r testSubmitRequest) GetPR() scm.PullRequest {
-	return nil
-}
-
 func testRequest(priority Priority, isEmergency bool) SubmitRequest {
-	return testSubmitRequest{
-		priority:    priority,
-		isEmergency: isEmergency,
+	return SubmitRequest{
+		Priority:    priority,
+		IsEmergency: isEmergency,
 	}
 }
 
@@ -143,10 +121,10 @@ func TestSort_ShouldSortByPriority(t *testing.T) {
 		if err != nil {
 			break
 		}
-		if item.Priority() > currentPriority {
+		if item.Priority > currentPriority {
 			t.Fatalf("incorrect priority ordering")
 		}
-		currentPriority = item.Priority()
+		currentPriority = item.Priority
 	}
 }
 
@@ -162,7 +140,7 @@ func TestSort_ShouldSortEmergencyFirst(t *testing.T) {
 
 	item := mustDequeue(queue, t)
 	if item != emergencyRequest {
-		t.Fatalf("expected emergency request, got %v", item.Priority())
+		t.Fatalf("expected emergency request, got %v", item.Priority)
 	}
 }
 
@@ -178,7 +156,7 @@ func TestSort_ShouldSortEmergencyThenByPriority(t *testing.T) {
 
 	item := mustDequeue(queue, t)
 	if item != emergencyRequest {
-		t.Fatalf("expected emergency request, got %v", item.Priority())
+		t.Fatalf("expected emergency request, got %v", item.Priority)
 	}
 	currentPriority := P1
 	for {
@@ -186,9 +164,9 @@ func TestSort_ShouldSortEmergencyThenByPriority(t *testing.T) {
 		if err != nil {
 			break
 		}
-		if item.Priority() > currentPriority {
+		if item.Priority > currentPriority {
 			t.Fatalf("incorrect priority ordering")
 		}
-		currentPriority = item.Priority()
+		currentPriority = item.Priority
 	}
 }
