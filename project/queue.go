@@ -1,10 +1,9 @@
-package submitqueue
+package project
 
 import (
 	"errors"
 	"sort"
-	"github.com/saquibmian/submitqueue/scm"
-	"github.com/saquibmian/submitqueue/project"
+	"fmt"
 )
 
 // Priority The priority of the submit request.
@@ -31,12 +30,13 @@ var (
 
 // SubmitRequest The data for each submit request
 type SubmitRequest interface {
-	Sha1() string
 	Priority() Priority
 	IsEmergency() bool
-	GetProject() project.Project
-	GetRepo() scm.Repo
-	GetPR() scm.PullRequest
+	Project() string
+	Repo() string
+	PRNumber() int
+	Ref() string
+	Sha1() string
 }
 
 // SubmitQueue The submit queue.
@@ -47,10 +47,10 @@ type SubmitQueue struct {
 
 // NewQueue Creates a new queue with the items present.
 // The resulting queue has not yet been sorted.
-func NewQueue(items []SubmitRequest) *SubmitQueue {
+func NewQueue() *SubmitQueue {
 	return &SubmitQueue{
 		sorted: false,
-		items:  items,
+		items:  nil,
 	}
 }
 
@@ -95,6 +95,13 @@ func (q *SubmitQueue) Peek() (SubmitRequest, error) {
 	}
 	item := q.items[0]
 	return item, nil
+}
+
+// Dump dumps the sorted contents of the queue to the io.Writer
+func (q *SubmitQueue) Dump() {
+	for i, item := range q.items {
+		fmt.Printf("[%2d] %s %s\n", i, "repo-name", item.Sha1())
+	}
 }
 
 type byPriorityDescending []SubmitRequest

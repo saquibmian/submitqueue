@@ -1,9 +1,8 @@
-package submitqueue
+package project
 
 import (
 	"testing"
 	"github.com/saquibmian/submitqueue/scm"
-	"github.com/saquibmian/submitqueue/project"
 )
 
 type testSubmitRequest struct {
@@ -20,9 +19,6 @@ func (r testSubmitRequest) IsEmergency() bool {
 func (r testSubmitRequest) Sha1() string {
 	return "test"
 }
-func (r testSubmitRequest) GetProject() project.Project {
-	return nil
-}
 func (r testSubmitRequest) GetRepo() scm.Repo {
 	return nil
 }
@@ -38,8 +34,7 @@ func testRequest(priority Priority, isEmergency bool) SubmitRequest {
 }
 
 func newQueue() *SubmitQueue {
-	items := []SubmitRequest{}
-	queue := NewQueue(items)
+	queue := NewQueue()
 	return queue
 }
 

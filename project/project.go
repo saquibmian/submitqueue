@@ -3,6 +3,7 @@ package project
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"os"
 	"text/template"
@@ -11,22 +12,34 @@ import (
 )
 
 var (
-	projects []Project
+	projects = make(map[string]Project)
 )
 
-func init() {
+func LoadProjects() error {
 	file, err := os.Open("projects.json")
 	if err != nil {
-		panic("error reading projects.json")
+		return err
 	}
 	decoder := json.NewDecoder(file)
 	configs := []projectConfig{}
 	if err = decoder.Decode(&configs); err != nil {
-		panic("error parsing projects.json")
+		return err
 	}
 	for _, config := range configs {
-		projects = append(projects, &project{config})
+		projects[config.Name] = &project{config, NewQueue()}
 	}
+	if len(projects) == 0 {
+		return errors.New("no projects defined")
+	}
+	return nil
+}
+
+func Get(name string) (Project, error) {
+	return nil, nil
+}
+
+func Projects() map[string]Project {
+	return projects
 }
 
 type TestResult struct {
@@ -40,40 +53,50 @@ type RunningTest struct {
 
 type Project interface {
 	Name() string
+	Queue() *SubmitQueue
+	GetRepo(name string) scm.Repo
+	GetPR(repo string, number int) scm.PullRequest
 	Test(scm.PullRequest) (RunningTest, error)
 }
 
-func Get(name string) (Project, error) {
-	return nil, nil
-}
-
-func Projects() []Project {
-	return nil
-}
-
 type testRequestConfig struct {
-	Url          string            `json:"url"`
+	URL          string            `json:"url"`
 	Method       string            `json:"method"`
 	Headers      map[string]string `json:"headers"`
 	BodyTemplate string            `json:"body"`
 }
 
 func (c testRequestConfig) GetBodyTemplate() (*template.Template, error) {
-	return template.New(c.Method + c.Url).Parse(c.BodyTemplate)
+	return template.New(c.Method + c.URL).Parse(c.BodyTemplate)
 }
 
 type projectConfig struct {
 	Name       string            `json:"name"`
+	Type       string            `json:"type"`
 	TestConfig testRequestConfig `json:"testConfig"`
 }
 
 type project struct {
 	config projectConfig
+	queue *SubmitQueue
 }
 
 func (p *project) Name() string {
 	return p.config.Name
 }
+
+func (p *project) Queue() *SubmitQueue {
+	return p.queue
+}
+
+func (p *project) GetRepo(name string) scm.Repo {
+	return nil
+}
+
+func (p *project) GetPR(repo string, number int) scm.PullRequest {
+	return nil
+}
+
 
 func (p *project) Test(pr scm.PullRequest) (RunningTest, error) {
 	tc := p.config.TestConfig
@@ -85,7 +108,7 @@ func (p *project) Test(pr scm.PullRequest) (RunningTest, error) {
 	if err = tmpl.Execute(body, nil); err != nil {
 		return RunningTest{}, err
 	}
-	req, err := http.NewRequest(tc.Method, tc.Url, nil)
+	req, err := http.NewRequest(tc.Method, tc.URL, nil)
 	if err != nil {
 		return RunningTest{}, err
 	}

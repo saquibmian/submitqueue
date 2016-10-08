@@ -1,56 +1,74 @@
-package submitqueue
+package main
 
 import (
-	"time"
+    "fmt"
+    "time"
+    "os"
+    "github.com/saquibmian/submitqueue/project"
 )
 
-type Reporter struct{}
+func main() {
+    if err := project.LoadProjects(); err != nil {
+        panic(err)
+    }
 
-func (r *Reporter) Report(req SubmitRequest, msg string, args ...interface{}) {
+    for name := range project.Projects() {
+        fmt.Printf("loaded project: %s\n", name)
+    }
 
+    for _, proj := range project.Projects() {
+        q := proj.Queue()
+        q.Dump()
+        go processQueue(proj, nil)
+    }
+
+    fmt.Printf("done\n")
 }
 
-func processQueue(queue *SubmitQueue, reporter *Reporter) {
-	for {
+func processQueue(proj project.Project, reporter *Reporter) {
+    queue := proj.Queue()
+    fmt.Printf("began processing queue for project %s\n", proj.Name())
+    for {
 		if !queue.IsSorted() {
 			queue.Sort()
 		}
 
 		req, err := queue.Dequeue()
 		if err != nil {
-			if err != ErrQueueEmpty {
-				panic("error pulling from queue")
+			if err != project.ErrQueueEmpty {
+				fmt.Fprintf(os.Stderr, "error pulling from queue: %s", err.Error())
 			}
 			time.Sleep(time.Second * 5)
 		}
 
-		processRequest(req, reporter, queue)
+		processRequest(req, reporter, proj)
 	}
 }
 
-func processRequest(req SubmitRequest, reporter *Reporter, queue *SubmitQueue) {
+func processRequest(req project.SubmitRequest, reporter *Reporter, proj project.Project) {
 	repo := req.GetRepo()
 	pr := req.GetPR()
 
 	// make sure PR is mergeable
 	repoHeadSha1, err := repo.HeadSha1()
 	if err != nil {
-		queue.Enqueue(req)
+		proj.Queue().Enqueue(req)
 		reporter.Report(req, "unable to fetch repo's SHA1; requeued")
 		return
 	}
 	prHeadSha1, err := pr.HeadSha1()
 	if err != nil {
-		queue.Enqueue(req)
+		proj.Queue().Enqueue(req)
 		reporter.Report(req, "unable to fetch PR's SHA1; requeued")
 		return
 	}
+	// todo kill this
 	if repo.IsGithub() && prHeadSha1 != req.Sha1() {
 		reporter.Report(req, "PR updated; re-queue when ready")
 		return
 	}
 	if ok, reason, err := pr.IsMergeCandidate(); err != nil {
-		queue.Enqueue(req)
+		proj.Queue().Enqueue(req)
 		reporter.Report(req, "unable to determine if PR is mergable; requeued")
 		return
 	} else if !ok {
@@ -59,9 +77,9 @@ func processRequest(req SubmitRequest, reporter *Reporter, queue *SubmitQueue) {
 	}
 
 	// run tests
-	test, err := req.GetProject().Test(pr)
+	test, err := proj.Test(pr)
 	if err != nil {
-		queue.Enqueue(req)
+		proj.Queue().Enqueue(req)
 		reporter.Report(req, "error requesting tests; requeued: %v", err)
 		return
 	}
@@ -74,22 +92,28 @@ func processRequest(req SubmitRequest, reporter *Reporter, queue *SubmitQueue) {
 	// make sure head hasn't changed
 	currentRepoHeadSha1, err := repo.HeadSha1()
 	if err != nil {
-		queue.Enqueue(req)
+		proj.Queue().Enqueue(req)
 		reporter.Report(req, "unable to fetch repo's SHA1; requeued")
 		return
 	}
 	currentPrHeadSha1, err := pr.HeadSha1()
 	if err != nil {
-		queue.Enqueue(req)
+		proj.Queue().Enqueue(req)
 		reporter.Report(req, "unable to fetch PR's SHA1; requeued")
 		return
 	}
 	if currentRepoHeadSha1 != repoHeadSha1 || currentPrHeadSha1 != prHeadSha1 {
 		reporter.Report(req, "PR changed while being tested and has been re-scheduled")
-		queue.Enqueue(req)
+		proj.Queue().Enqueue(req)
 		return
 	}
 
 	pr.Merge()
 	reporter.Report(req, "pr automatically merged!")
+}
+
+type Reporter struct{}
+
+func (r *Reporter) Report(req project.SubmitRequest, msg string, args ...interface{}) {
+    fmt.Printf(msg, args)
 }
