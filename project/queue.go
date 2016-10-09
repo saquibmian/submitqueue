@@ -67,6 +67,8 @@ func (q *SubmitQueue) Enqueue(item SubmitRequest) {
 
 // Sort Creates a new Queue ordered according to priority rules
 func (q *SubmitQueue) Sort() {
+	// the order is: emergency -> P1 -> P2 -> P3 -> P4/PNormal;
+	// each section is sub ordered by time of enqueue
 	sort.Sort(byPriorityDescending(q.items))
 	sort.Stable(byEmergencyFirst(q.items))
 	q.sorted = true
